@@ -38,15 +38,25 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
     private var isCalibrating = false
     private var calibrationSamples = mutableListOf<FloatArray>()
 
-    // Low-pass filter for acceleration
+    // Low-pass filter for acceleration (stronger filtering)
     private var filteredAccelX = 0f
     private var filteredAccelY = 0f
     private var filteredAccelZ = 0f
-    private val alpha = 0.2f  // Filter coefficient
+    private val accelAlpha = 0.1f  // Lower = smoother
+
+    // Speed smoothing - moving average buffer
+    private val speedBufferSize = 20
+    private val speedBuffer = DoubleArray(speedBufferSize)
+    private var speedBufferIndex = 0
+    private var speedBufferFilled = false
+    
+    // Additional EMA for display smoothing
+    private var smoothedSpeed = 0.0
+    private val speedAlpha = 0.15  // Lower = smoother display
 
     // Zero velocity update threshold
-    private val zeroVelocityThreshold = 0.15  // m/s² - if accel below this, assume stationary
-    private val velocityDecay = 0.98  // Decay factor when stationary
+    private val zeroVelocityThreshold = 0.12  // m/s²
+    private val velocityDecay = 0.95  // Stronger decay when stationary
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -76,9 +86,9 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         val status = StringBuilder()
         if (accelerometer == null) status.append("No accelerometer! ")
         if (gyroscope == null) status.append("No gyroscope! ")
-        if (linearAccelSensor == null) status.append("No linear accel sensor! ")
+        if (linearAccelSensor == null) status.append("No linear accel! ")
         if (status.isEmpty()) {
-            statusText.text = "All sensors available. Place phone flat, then calibrate."
+            statusText.text = "Sensors OK. Mount phone flat, then Calibrate."
         } else {
             statusText.text = status.toString()
         }
@@ -109,15 +119,15 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
                 val y = event.values[1]
                 val z = event.values[2]
                 val mag = sqrt(x * x + y * y + z * z)
-                accelText.text = String.format("X: %+.2f  Y: %+.2f  Z: %+.2f", x, y, z)
-                accelMagText.text = String.format("Magnitude: %.2f (gravity ≈ 9.81)", mag)
+                accelText.text = String.format("X:%+.2f Y:%+.2f Z:%+.2f", x, y, z)
+                accelMagText.text = String.format("Mag: %.2f", mag)
             }
 
             Sensor.TYPE_GYROSCOPE -> {
                 val x = event.values[0]
                 val y = event.values[1]
                 val z = event.values[2]
-                gyroText.text = String.format("X: %+.3f  Y: %+.3f  Z: %+.3f", x, y, z)
+                gyroText.text = String.format("X:%+.3f Y:%+.3f Z:%+.3f", x, y, z)
             }
 
             Sensor.TYPE_LINEAR_ACCELERATION -> {
@@ -131,13 +141,13 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         val rawY = event.values[1] - offsetY
         val rawZ = event.values[2] - offsetZ
 
-        // Low-pass filter
-        filteredAccelX = alpha * rawX + (1 - alpha) * filteredAccelX
-        filteredAccelY = alpha * rawY + (1 - alpha) * filteredAccelY
-        filteredAccelZ = alpha * rawZ + (1 - alpha) * filteredAccelZ
+        // Low-pass filter on acceleration
+        filteredAccelX = accelAlpha * rawX + (1 - accelAlpha) * filteredAccelX
+        filteredAccelY = accelAlpha * rawY + (1 - accelAlpha) * filteredAccelY
+        filteredAccelZ = accelAlpha * rawZ + (1 - accelAlpha) * filteredAccelZ
 
         linearAccelText.text = String.format(
-            "X: %+.3f  Y: %+.3f  Z: %+.3f",
+            "X:%+.3f Y:%+.3f Z:%+.3f",
             filteredAccelX, filteredAccelY, filteredAccelZ
         )
 
@@ -155,10 +165,9 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
             lastTimestamp = event.timestamp
             return
         }
-        val dt = (event.timestamp - lastTimestamp) / 1_000_000_000.0  // Convert to seconds
+        val dt = (event.timestamp - lastTimestamp) / 1_000_000_000.0
         lastTimestamp = event.timestamp
 
-        // Skip unreasonable dt
         if (dt <= 0 || dt > 0.5) return
 
         val accelMagnitude = sqrt(
@@ -167,29 +176,39 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
             filteredAccelZ * filteredAccelZ
         )
 
-        // Zero velocity update - if very low acceleration, apply decay
+        // Zero velocity update
         if (accelMagnitude < zeroVelocityThreshold) {
             velocityX *= velocityDecay
             velocityY *= velocityDecay
             velocityZ *= velocityDecay
             
-            // Clamp to zero if very small
-            if (abs(velocityX) < 0.01) velocityX = 0.0
-            if (abs(velocityY) < 0.01) velocityY = 0.0
-            if (abs(velocityZ) < 0.01) velocityZ = 0.0
+            if (abs(velocityX) < 0.005) velocityX = 0.0
+            if (abs(velocityY) < 0.005) velocityY = 0.0
+            if (abs(velocityZ) < 0.005) velocityZ = 0.0
         } else {
-            // Integrate acceleration to get velocity
             velocityX += filteredAccelX * dt
             velocityY += filteredAccelY * dt
             velocityZ += filteredAccelZ * dt
         }
 
-        // Calculate total speed
-        val speedMs = sqrt(velocityX * velocityX + velocityY * velocityY + velocityZ * velocityZ)
-        val speedKmh = speedMs * 3.6
+        // Raw speed
+        val rawSpeedMs = sqrt(velocityX * velocityX + velocityY * velocityY + velocityZ * velocityZ)
+        val rawSpeedKmh = rawSpeedMs * 3.6
 
-        // Clamp to reasonable range
-        val displaySpeed = speedKmh.coerceIn(0.0, 200.0)
+        // Add to moving average buffer
+        speedBuffer[speedBufferIndex] = rawSpeedKmh
+        speedBufferIndex = (speedBufferIndex + 1) % speedBufferSize
+        if (speedBufferIndex == 0) speedBufferFilled = true
+
+        // Calculate moving average
+        val samplesToUse = if (speedBufferFilled) speedBufferSize else speedBufferIndex.coerceAtLeast(1)
+        val avgSpeed = speedBuffer.take(samplesToUse).average()
+
+        // Apply additional EMA smoothing for display
+        smoothedSpeed = speedAlpha * avgSpeed + (1 - speedAlpha) * smoothedSpeed
+
+        // Clamp and display
+        val displaySpeed = smoothedSpeed.coerceIn(0.0, 250.0)
         speedText.text = String.format("%.1f", displaySpeed)
     }
 
@@ -201,14 +220,18 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         filteredAccelX = 0f
         filteredAccelY = 0f
         filteredAccelZ = 0f
+        smoothedSpeed = 0.0
+        speedBufferIndex = 0
+        speedBufferFilled = false
+        speedBuffer.fill(0.0)
         speedText.text = "0.0"
-        statusText.text = "Speed reset"
+        statusText.text = "Speed reset to zero"
     }
 
     private fun startCalibration() {
         isCalibrating = true
         calibrationSamples.clear()
-        statusText.text = "Calibrating... keep phone still"
+        statusText.text = "Calibrating... keep still!"
     }
 
     private fun finishCalibration() {
@@ -220,7 +243,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
             offsetZ = calibrationSamples.map { it[2] }.average().toFloat()
             
             statusText.text = String.format(
-                "Calibrated! Offsets: %.3f, %.3f, %.3f",
+                "Done! Bias: %.3f, %.3f, %.3f",
                 offsetX, offsetY, offsetZ
             )
         }
@@ -228,7 +251,5 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         resetSpeed()
     }
 
-    override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {
-        // Not used
-    }
+    override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
 }
