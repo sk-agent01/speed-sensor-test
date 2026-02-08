@@ -1,0 +1,179 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="24dp"
+    android:background="#1a1a1a">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Speed Sensor Test"
+        android:textSize="28sp"
+        android:textColor="#ffffff"
+        android:textStyle="bold"
+        android:layout_gravity="center"
+        android:layout_marginBottom="32dp"/>
+
+    <!-- Estimated Speed - Big Display -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:background="#2d2d2d"
+        android:padding="24dp"
+        android:layout_marginBottom="24dp">
+        
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="ESTIMATED SPEED"
+            android:textSize="14sp"
+            android:textColor="#888888"
+            android:layout_gravity="center"/>
+        
+        <TextView
+            android:id="@+id/speedText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="0.0"
+            android:textSize="72sp"
+            android:textColor="#4CAF50"
+            android:textStyle="bold"
+            android:layout_gravity="center"/>
+        
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="km/h"
+            android:textSize="24sp"
+            android:textColor="#888888"
+            android:layout_gravity="center"/>
+    </LinearLayout>
+
+    <!-- Accelerometer -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:background="#2d2d2d"
+        android:padding="16dp"
+        android:layout_marginBottom="12dp">
+        
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="ACCELEROMETER (m/s²)"
+            android:textSize="12sp"
+            android:textColor="#888888"
+            android:layout_marginBottom="8dp"/>
+        
+        <TextView
+            android:id="@+id/accelText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="X: 0.00  Y: 0.00  Z: 0.00"
+            android:textSize="18sp"
+            android:textColor="#ffffff"
+            android:fontFamily="monospace"/>
+        
+        <TextView
+            android:id="@+id/accelMagText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Magnitude: 0.00"
+            android:textSize="14sp"
+            android:textColor="#aaaaaa"
+            android:fontFamily="monospace"
+            android:layout_marginTop="4dp"/>
+    </LinearLayout>
+
+    <!-- Gyroscope -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:background="#2d2d2d"
+        android:padding="16dp"
+        android:layout_marginBottom="12dp">
+        
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="GYROSCOPE (rad/s)"
+            android:textSize="12sp"
+            android:textColor="#888888"
+            android:layout_marginBottom="8dp"/>
+        
+        <TextView
+            android:id="@+id/gyroText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="X: 0.00  Y: 0.00  Z: 0.00"
+            android:textSize="18sp"
+            android:textColor="#ffffff"
+            android:fontFamily="monospace"/>
+    </LinearLayout>
+
+    <!-- Linear Acceleration (gravity removed) -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:background="#2d2d2d"
+        android:padding="16dp"
+        android:layout_marginBottom="24dp">
+        
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="LINEAR ACCEL (no gravity)"
+            android:textSize="12sp"
+            android:textColor="#888888"
+            android:layout_marginBottom="8dp"/>
+        
+        <TextView
+            android:id="@+id/linearAccelText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="X: 0.00  Y: 0.00  Z: 0.00"
+            android:textSize="18sp"
+            android:textColor="#ffffff"
+            android:fontFamily="monospace"/>
+    </LinearLayout>
+
+    <!-- Buttons -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+        
+        <Button
+            android:id="@+id/resetButton"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Reset Speed"
+            android:layout_marginEnd="8dp"/>
+        
+        <Button
+            android:id="@+id/calibrateButton"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Calibrate"
+            android:layout_marginStart="8dp"/>
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/statusText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Place phone flat in car, then calibrate"
+        android:textSize="12sp"
+        android:textColor="#666666"
+        android:layout_gravity="center"
+        android:layout_marginTop="16dp"/>
+
+</LinearLayout>
